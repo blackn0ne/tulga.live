@@ -1,0 +1,34 @@
+<VirtualHost *:80>
+    ServerName jitsi.tulga.kz
+
+    RewriteEngine On
+    RewriteRule ^/(.*)$ https://jitsi.tulga.kz/$1 [R=301,L]
+</VirtualHost>
+
+<IfModule mod_ssl.c>
+<VirtualHost *:443>
+    ServerName jitsi.tulga.kz
+
+    SSLEngine on
+    SSLCertificateFile /etc/letsencrypt/live/jitsi.tulga.kz/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/jitsi.tulga.kz/privkey.pem
+
+    ProxyPreserveHost On
+    SSLProxyEngine On
+    AllowEncodedSlashes NoDecode
+
+    RequestHeader set X-Forwarded-Proto "https"
+    RequestHeader set X-Forwarded-Ssl "on"
+
+    ProxyPass / http://127.0.0.1:8088/ retry=0 timeout=30 keepalive=On
+    ProxyPassReverse / http://127.0.0.1:8088/
+
+    ProxyPass /xmpp-websocket ws://127.0.0.1:8088/xmpp-websocket retry=0 timeout=30
+    ProxyPassReverse /xmpp-websocket ws://127.0.0.1:8088/xmpp-websocket
+
+    ProxyPass /colibri-ws/ ws://127.0.0.1:8088/colibri-ws/ retry=0 timeout=30
+    ProxyPassReverse /colibri-ws/ ws://127.0.0.1:8088/colibri-ws/
+
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+</VirtualHost>
+</IfModule>

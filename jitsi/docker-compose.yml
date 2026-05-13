@@ -1,0 +1,126 @@
+services:
+  web:
+    image: jitsi/web:${JITSI_IMAGE_VERSION:-latest}
+    restart: ${RESTART_POLICY:-unless-stopped}
+    ports:
+      - "127.0.0.1:${HTTP_PORT:-8088}:80"
+    volumes:
+      - ${CONFIG}/web:/config
+      - ${CONFIG}/web/crontabs:/var/spool/cron/crontabs
+      - ${CONFIG}/transcripts:/usr/share/jitsi-meet/transcripts
+    environment:
+      - AUTH_TYPE
+      - DISABLE_HTTPS
+      - ENABLE_AUTH
+      - ENABLE_GUESTS
+      - ENABLE_LOBBY
+      - ENABLE_COLIBRI_WEBSOCKET
+      - ENABLE_XMPP_WEBSOCKET
+      - PUBLIC_URL
+      - TZ
+      - XMPP_AUTH_DOMAIN
+      - XMPP_DOMAIN
+      - XMPP_GUEST_DOMAIN
+      - XMPP_HIDDEN_DOMAIN
+      - XMPP_MUC_DOMAIN
+      - XMPP_PORT
+      - XMPP_RECORDER_DOMAIN
+    depends_on:
+      - prosody
+      - jvb
+    networks:
+      meet.jitsi:
+
+  prosody:
+    image: jitsi/prosody:${JITSI_IMAGE_VERSION:-latest}
+    restart: ${RESTART_POLICY:-unless-stopped}
+    expose:
+      - "${XMPP_PORT:-5222}"
+      - "5347"
+      - "${PROSODY_HTTP_PORT:-5280}"
+    volumes:
+      - ${CONFIG}/prosody/config:/config
+      - ${CONFIG}/prosody/prosody-plugins-custom:/prosody-plugins-custom
+    environment:
+      - AUTH_TYPE
+      - ENABLE_AUTH
+      - ENABLE_GUESTS
+      - ENABLE_LOBBY
+      - ENABLE_XMPP_WEBSOCKET
+      - JWT_APP_ID
+      - JWT_APP_SECRET
+      - JWT_ACCEPTED_ISSUERS
+      - JWT_ACCEPTED_AUDIENCES
+      - JWT_ALLOW_EMPTY
+      - JICOFO_AUTH_PASSWORD
+      - JVB_AUTH_PASSWORD
+      - PUBLIC_URL
+      - TZ
+      - XMPP_AUTH_DOMAIN
+      - XMPP_DOMAIN
+      - XMPP_GUEST_DOMAIN
+      - XMPP_HIDDEN_DOMAIN
+      - XMPP_INTERNAL_MUC_DOMAIN
+      - XMPP_MUC_DOMAIN
+      - XMPP_PORT
+      - XMPP_RECORDER_DOMAIN
+    networks:
+      meet.jitsi:
+        aliases:
+          - ${XMPP_SERVER:-xmpp.meet.jitsi}
+
+  jicofo:
+    image: jitsi/jicofo:${JITSI_IMAGE_VERSION:-latest}
+    restart: ${RESTART_POLICY:-unless-stopped}
+    ports:
+      - "127.0.0.1:${JICOFO_REST_PORT:-8888}:8888"
+    volumes:
+      - ${CONFIG}/jicofo:/config
+    environment:
+      - AUTH_TYPE
+      - ENABLE_AUTH
+      - ENABLE_AUTO_OWNER
+      - ENABLE_LOBBY
+      - ENABLE_MODERATOR_CHECKS
+      - JICOFO_AUTH_PASSWORD
+      - PUBLIC_URL
+      - TZ
+      - XMPP_AUTH_DOMAIN
+      - XMPP_DOMAIN
+      - XMPP_INTERNAL_MUC_DOMAIN
+      - XMPP_MUC_DOMAIN
+      - XMPP_PORT
+      - XMPP_SERVER
+    depends_on:
+      - prosody
+    networks:
+      meet.jitsi:
+
+  jvb:
+    image: jitsi/jvb:${JITSI_IMAGE_VERSION:-latest}
+    restart: ${RESTART_POLICY:-unless-stopped}
+    ports:
+      - "${JVB_PORT:-10000}:${JVB_PORT:-10000}/udp"
+      - "127.0.0.1:${JVB_COLIBRI_PORT:-8080}:8080"
+    volumes:
+      - ${CONFIG}/jvb:/config
+    environment:
+      - ENABLE_COLIBRI_WEBSOCKET
+      - JVB_ADVERTISE_IPS
+      - JVB_AUTH_PASSWORD
+      - JVB_AUTH_USER
+      - JVB_PORT
+      - JVB_WS_DOMAIN
+      - PUBLIC_URL
+      - TZ
+      - XMPP_AUTH_DOMAIN
+      - XMPP_INTERNAL_MUC_DOMAIN
+      - XMPP_PORT
+      - XMPP_SERVER
+    depends_on:
+      - prosody
+    networks:
+      meet.jitsi:
+
+networks:
+  meet.jitsi:
