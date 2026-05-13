@@ -18,6 +18,7 @@ class Lesson extends Model
         'class_id',
         'teacher_id',
         'starts_at',
+        'end_at',
         'jitsi_room',
         'meeting_provider',
         'meeting_status',
@@ -36,6 +37,7 @@ class Lesson extends Model
     {
         return [
             'starts_at' => 'datetime',
+            'end_at' => 'datetime',
         ];
     }
 

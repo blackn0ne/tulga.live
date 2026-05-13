@@ -35,27 +35,9 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
-        $quotes = [
-            [
-                'message' => 'Тәртіп пен айқындық бар жерде нәтиже де тұрақты болады.',
-                'author' => 'Жүйе қағидасы',
-            ],
-            [
-                'message' => 'Күн сайынғы шағын ілгерілеу үлкен жетістікке бастайды.',
-                'author' => 'Команда ұстанымы',
-            ],
-            [
-                'message' => 'Ыңғайлы интерфейс жұмысты тездетеді, ал тазалық қателікті азайтады.',
-                'author' => 'Өнім қағидасы',
-            ],
-        ];
-
-        $quote = $quotes[array_rand($quotes)];
-
         return array_merge(parent::share($request), [
-            ...parent::share($request),
             'name' => config('app.name'),
-            'quote' => $quote,
+            'csrf_token' => csrf_token(),
             'auth' => [
                 'user' => $request->user(),
             ],

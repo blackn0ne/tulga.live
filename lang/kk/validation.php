@@ -25,6 +25,7 @@ return [
         'subject_id' => 'пәні',
         'teacher_id' => 'мұғалімі',
         'starts_at' => 'сабақ уақыты',
+        'end_at' => 'аяқталу уақыты',
         'jitsi_room' => 'Jitsi бөлмесі',
         'password' => 'құпиясөз',
         'password_confirmation' => 'құпиясөзді растау',

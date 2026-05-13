@@ -127,6 +127,7 @@ class LessonController extends Controller
             'class_id' => $validated['class_id'],
             'teacher_id' => $validated['teacher_id'],
             'starts_at' => $validated['starts_at'],
+            'end_at' => $validated['end_at'],
             'meeting_provider' => 'jitsi',
             'meeting_status' => 'scheduled',
         ]);
@@ -155,6 +156,7 @@ class LessonController extends Controller
                 'class_id' => $lesson->class_id,
                 'teacher_id' => $lesson->teacher_id,
                 'starts_at' => $lesson->starts_at->format('Y-m-d\TH:i'),
+                'end_at' => $lesson->end_at?->format('Y-m-d\TH:i') ?? '',
                 'jitsi_room' => $lesson->jitsi_room,
             ],
             'subjects' => Subject::query()->orderBy('name')->get(['id', 'name']),
@@ -183,6 +185,7 @@ class LessonController extends Controller
             'class_id' => $validated['class_id'],
             'teacher_id' => $validated['teacher_id'],
             'starts_at' => $validated['starts_at'],
+            'end_at' => $validated['end_at'],
             'meeting_provider' => 'jitsi',
             'jitsi_room' => $lesson->jitsi_room ?: $this->defaultJitsiRoom($lesson),
         ]);
@@ -258,6 +261,10 @@ class LessonController extends Controller
      */
     private function validateLesson(Request $request, ?Lesson $lesson = null): array
     {
+        if (blank($request->input('end_at'))) {
+            $request->merge(['end_at' => null]);
+        }
+
         $validated = $request->validate([
             'subject_id' => ['required', Rule::exists('subjects', 'id')],
             'class_id' => ['required', Rule::exists('classes', 'id')],
@@ -266,7 +273,23 @@ class LessonController extends Controller
                 Rule::exists('users', 'id')->where(fn ($query) => $query->where('role', UserRole::Teacher->value)),
             ],
             'starts_at' => ['required', 'date'],
+            'end_at' => ['nullable', 'date'],
         ]);
+
+        $start = Carbon::parse($validated['starts_at']);
+        $endInput = $validated['end_at'] ?? null;
+        $end = filled($endInput)
+            ? Carbon::parse($endInput)
+            : $start->copy()->addMinutes(45);
+
+        if ($end->lessThanOrEqualTo($start)) {
+            throw ValidationException::withMessages([
+                'end_at' => 'Аяқталу уақыты басталу уақытынан кейін болуы керек.',
+            ]);
+        }
+
+        $validated['starts_at'] = $start;
+        $validated['end_at'] = $end;
 
         $this->ensureNoScheduleConflicts($validated, $lesson);
 

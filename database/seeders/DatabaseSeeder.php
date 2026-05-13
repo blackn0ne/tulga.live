@@ -24,5 +24,8 @@ class DatabaseSeeder extends Seeder
             'email_verified_at' => now(),
             'password' => 'index0322',
         ]);
+
+        // $this->call(ScheduleMay142026LessonsSeeder::class);
+        // $this->call(ScheduleMay152026LessonsSeeder::class);
     }
 }

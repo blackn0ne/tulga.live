@@ -41,6 +41,7 @@ class UserController extends Controller
             'users' => $users,
             'status' => $request->session()->get('status'),
             'generatedCredentials' => $request->session()->get('generatedCredentials'),
+            'importResult' => $request->session()->get('importResult'),
         ]);
     }
 

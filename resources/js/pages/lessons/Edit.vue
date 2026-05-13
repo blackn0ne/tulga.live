@@ -21,6 +21,7 @@ interface LessonForm {
     class_id: number;
     teacher_id: number;
     starts_at: string;
+    end_at: string;
     jitsi_room: string | null;
 }
 
@@ -47,6 +48,7 @@ const form = useForm({
     class_id: props.lesson.class_id,
     teacher_id: props.lesson.teacher_id,
     starts_at: props.lesson.starts_at,
+    end_at: props.lesson.end_at,
 });
 
 const generatedTitle = computed(() => {
@@ -68,7 +70,7 @@ const submit = () => {
             <section class="rounded-2xl border bg-card p-5 shadow-sm">
                 <div class="space-y-1">
                     <h1 class="text-2xl font-semibold tracking-tight">Сабақты өңдеу</h1>
-                    <p class="text-sm text-muted-foreground">Пән, сынып, мұғалім және басталу уақытын жаңартыңыз. Jitsi бөлмесі сақталып қалады.</p>
+                    <p class="text-sm text-muted-foreground">Пән, сынып, мұғалім және басталу уақытын жаңартыңыз. Аяқталу уақыты оқушыға көрінбейді; бос қалса басталғаннан 45 минут кейін қойылады. Jitsi бөлмесі сақталып қалады.</p>
                 </div>
             </section>
 
@@ -131,9 +133,16 @@ const submit = () => {
                             </div>
 
                             <div class="grid gap-2">
-                                <Label for="starts_at">Күні мен уақыты</Label>
+                                <Label for="starts_at">Күні мен уақыты (басталуы)</Label>
                                 <Input id="starts_at" v-model="form.starts_at" type="datetime-local" />
                                 <InputError :message="form.errors.starts_at" />
+                            </div>
+
+                            <div class="grid gap-2">
+                                <Label for="end_at">Аяқталу уақыты (міндетті емес)</Label>
+                                <Input id="end_at" v-model="form.end_at" type="datetime-local" />
+                                <InputError :message="form.errors.end_at" />
+                                <p class="text-xs text-muted-foreground">Бос қалса 45 минут. Оқушыға көрсетілмейді.</p>
                             </div>
 
                             <div class="grid gap-2 md:col-span-2">

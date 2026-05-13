@@ -36,7 +36,7 @@ const submit = () => {
                 </div>
 
                 <div class="grid gap-2">
-                    <Label for="username">Пайдаланушы аты</Label>
+                    <Label for="username">Логин</Label>
                     <Input id="username" type="text" required tabindex="2" autocomplete="username" v-model="form.username" placeholder="moka" />
                     <InputError :message="form.errors.username" />
                 </div>

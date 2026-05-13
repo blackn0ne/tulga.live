@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import InputError from '@/components/InputError.vue';
-import TextLink from '@/components/TextLink.vue';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -37,7 +36,7 @@ const submit = () => {
         <form @submit.prevent="submit" class="flex flex-col gap-6">
             <div class="grid gap-6">
                 <div class="grid gap-2">
-                    <Label for="username">Пайдаланушы аты</Label>
+                    <Label for="username">Логин</Label>
                     <Input
                         id="username"
                         type="text"
@@ -46,7 +45,7 @@ const submit = () => {
                         tabindex="1"
                         autocomplete="username"
                         v-model="form.username"
-                        placeholder="moka"
+                        placeholder="Логин"
                     />
                     <InputError :message="form.errors.username" />
                 </div>
@@ -76,11 +75,6 @@ const submit = () => {
                     <LoaderCircle v-if="form.processing" class="h-4 w-4 animate-spin" />
                     Кіру
                 </Button>
-            </div>
-
-            <div class="text-center text-sm text-muted-foreground">
-                Аккаунтыңыз жоқ па?
-                <TextLink :href="route('register')" :tabindex="5">Тіркелу</TextLink>
             </div>
         </form>
     </AuthBase>

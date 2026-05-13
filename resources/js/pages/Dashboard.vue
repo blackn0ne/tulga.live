@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { BookOpen, CalendarDays, School, ShieldCheck, Users } from 'lucide-vue-next';
 import { computed } from 'vue';
 
@@ -37,6 +37,13 @@ const props = defineProps<{
     stats: DashboardStats;
     lessons: DashboardLesson[];
 }>();
+
+const page = usePage();
+
+const viewerDisplayName = computed(() => {
+    const u = page.props.auth?.user as { name?: string } | undefined;
+    return u?.name?.trim() || '';
+});
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -102,14 +109,16 @@ const lessonsByDate = computed(() => {
                 <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div class="space-y-1">
                         <h1 class="text-2xl font-semibold tracking-tight">
-                            {{ props.mode === 'teacher' || props.mode === 'student' ? 'Менің сабақ кестем' : 'Басқару тақтасы' }}
+                            <template v-if="props.mode === 'student'">{{ viewerDisplayName || 'Оқушы' }}</template>
+                            <template v-else-if="props.mode === 'teacher'">Менің сабақ кестем</template>
+                            <template v-else>Басқару тақтасы</template>
                         </h1>
                         <p class="text-sm text-muted-foreground">
                             <template v-if="props.mode === 'teacher'">
                                 Сізге бекітілген сабақтар осында көрсетіледі. Сабақты осы беттен бастай аласыз.
                             </template>
                             <template v-else-if="props.mode === 'student'">
-                                {{ props.userClassName ? `${props.userClassName} сыныбына арналған сабақтар тізімі.` : 'Сыныпқа арналған сабақтар кестесі.' }}
+                                {{ props.userClassName ? `Сыныбым: ${props.userClassName}` : 'Сыныбым: —' }}
                             </template>
                             <template v-else>
                                 Негізгі бөлімдерге жылдам өтіп, жүйені бір жерден басқарыңыз.
@@ -184,7 +193,7 @@ const lessonsByDate = computed(() => {
                                 Мұғалім ретінде алдағы сабақтарыңыздың тізімі.
                             </template>
                             <template v-else-if="props.mode === 'student'">
-                                Оқушы ретінде өз сыныбыңыздың сабақтары.
+                                Сабақтар кестесі
                             </template>
                             <template v-else>
                                 Жүйедегі ең жақын жоспарланған сабақтар.
@@ -227,9 +236,68 @@ const lessonsByDate = computed(() => {
                                 <div
                                     v-for="lesson in group.lessons"
                                     :key="lesson.id"
-                                    class="rounded-2xl border bg-background p-4 shadow-sm transition-colors hover:bg-muted/20"
+                                    class="relative rounded-2xl border bg-background p-4 shadow-sm transition-colors hover:bg-muted/20"
                                 >
-                                    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                    <!-- Оқушы: индикатор — оң жоғары бұрышта, мәтін жоқ; түйме толық ені -->
+                                    <template v-if="props.mode === 'student'">
+                                        <div class="absolute right-3 top-3 z-10" aria-hidden="true">
+                                            <span class="relative flex h-3 w-3 shrink-0">
+                                                <span
+                                                    v-if="lesson.meeting_status_key !== 'finished'"
+                                                    class="absolute inline-flex h-full w-full animate-ping rounded-full opacity-50"
+                                                    :class="{
+                                                        'bg-emerald-500': lesson.meeting_status_key === 'started',
+                                                        'bg-amber-500': lesson.meeting_status_key === 'scheduled',
+                                                    }"
+                                                />
+                                                <span
+                                                    class="relative inline-flex h-3 w-3 rounded-full"
+                                                    :class="{
+                                                        'bg-emerald-500': lesson.meeting_status_key === 'started',
+                                                        'bg-amber-500': lesson.meeting_status_key === 'scheduled',
+                                                        'bg-red-500': lesson.meeting_status_key === 'finished',
+                                                    }"
+                                                />
+                                            </span>
+                                        </div>
+
+                                        <div class="flex min-w-0 items-start gap-4 pr-7 sm:items-center">
+                                            <div
+                                                class="shrink-0 text-3xl font-semibold tabular-nums tracking-tight text-foreground sm:text-4xl"
+                                            >
+                                                {{ lesson.starts_at_time }}
+                                            </div>
+                                            <div class="min-w-0 flex-1 space-y-1">
+                                                <h4 class="truncate text-base font-semibold leading-tight">{{ lesson.title }}</h4>
+                                                <p class="truncate text-sm text-muted-foreground">
+                                                    {{ lesson.teacher_name ?? '—' }}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div
+                                            v-if="
+                                                lesson.meeting_status_key === 'scheduled' ||
+                                                lesson.meeting_status_key === 'started'
+                                            "
+                                            class="mt-4 border-t border-border/60 pt-3"
+                                        >
+                                            <Button
+                                                v-if="lesson.meeting_status_key === 'scheduled'"
+                                                class="w-full"
+                                                variant="outline"
+                                                disabled
+                                            >
+                                                Күту
+                                            </Button>
+
+                                            <Button v-else class="w-full" as-child>
+                                                <Link :href="route('lessons.show', lesson.id)">Сабаққа өту</Link>
+                                            </Button>
+                                        </div>
+                                    </template>
+
+                                    <div v-else class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                                         <div class="space-y-3">
                                             <div class="space-y-1">
                                                 <h4 class="font-medium leading-none">{{ lesson.title }}</h4>
@@ -273,28 +341,8 @@ const lessonsByDate = computed(() => {
                                                     </Button>
                                                 </template>
 
-                                                <Button
-                                                    v-else-if="props.mode === 'student' && lesson.meeting_status_key === 'scheduled'"
-                                                    size="sm"
-                                                    variant="outline"
-                                                    disabled
-                                                >
-                                                    Күту
-                                                </Button>
-
-                                                <Button
-                                                    v-else-if="props.mode === 'student' && lesson.meeting_status_key === 'finished'"
-                                                    size="sm"
-                                                    variant="outline"
-                                                    disabled
-                                                >
-                                                    Өтілді
-                                                </Button>
-
                                                 <Button v-else size="sm" variant="outline" as-child>
-                                                    <Link :href="route('lessons.show', lesson.id)">
-                                                        {{ props.mode === 'student' ? 'Сабаққа кіру' : 'Сабақты ашу' }}
-                                                    </Link>
+                                                    <Link :href="route('lessons.show', lesson.id)">Сабақты ашу</Link>
                                                 </Button>
                                             </div>
                                         </div>

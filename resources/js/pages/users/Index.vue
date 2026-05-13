@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link, useForm } from '@inertiajs/vue3';
-import { Pencil, Plus, Trash2 } from 'lucide-vue-next';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import { Download, Pencil, Plus, Trash2, Upload } from 'lucide-vue-next';
+import { ref } from 'vue';
 
 interface ManagedUser {
     id: number;
@@ -24,6 +27,13 @@ interface GeneratedCredentials {
     password: string;
 }
 
+interface ImportResult {
+    created: number;
+    updated: number;
+    skipped: number;
+    errors: string[];
+}
+
 interface PaginatedUsers {
     data: ManagedUser[];
     current_page: number;
@@ -40,7 +50,46 @@ const props = defineProps<{
     users: PaginatedUsers;
     status?: string;
     generatedCredentials?: GeneratedCredentials | null;
+    importResult?: ImportResult | null;
 }>();
+
+const page = usePage<{ csrf_token: string }>();
+
+const importForm = useForm<{ file: File | null }>({
+    file: null,
+});
+
+const exportFormRef = ref<HTMLFormElement | null>(null);
+
+const onImportFile = (event: Event) => {
+    const input = event.target as HTMLInputElement;
+    importForm.file = input.files?.[0] ?? null;
+};
+
+const submitImport = () => {
+    if (!importForm.file) {
+        window.alert('Файлды таңдаңыз (.xlsx немесе .xls).');
+
+        return;
+    }
+
+    importForm.post(route('users.students.import'), {
+        forceFormData: true,
+        preserveScroll: true,
+    });
+};
+
+const exportStudents = () => {
+    const ok = window.confirm(
+        'Барлық оқушыларға жаңа 6 таңбалы құпиясөз беріледі және .xlsx файлға жазылады. Жалғастырасыз ба?',
+    );
+
+    if (!ok) {
+        return;
+    }
+
+    exportFormRef.value?.submit();
+};
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -88,6 +137,54 @@ const remove = (user: ManagedUser) => {
                         </Link>
                     </Button>
                 </div>
+            </section>
+
+            <section class="rounded-2xl border bg-card p-5 shadow-sm">
+                <h2 class="text-lg font-semibold tracking-tight">Оқушылар Excel</h2>
+                <p class="mt-1 text-sm text-muted-foreground">
+                    Импорт: бірінші жолда баған атаулары — <span class="font-mono">name</span>, <span class="font-mono">classs</span> (немесе
+                    <span class="font-mono">class</span>), <span class="font-mono">username</span>. Қосымша <span class="font-mono">password</span> (≥ 6
+                    таңба) болса, жаңартылған жазбада сол құпиясөз қолданылады; жоқ болса жаңа оқушыға автоматты құпиясөз, бар оқушыда ескі құпиясөз
+                    сақталады.
+                </p>
+
+                <div class="mt-4 flex flex-col gap-4 lg:flex-row lg:items-end">
+                    <div class="flex flex-1 flex-col gap-2">
+                        <Label for="students-import-file">students.xlsx жүктеу</Label>
+                        <Input
+                            id="students-import-file"
+                            type="file"
+                            accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                            :disabled="importForm.processing"
+                            @change="onImportFile"
+                        />
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <Button type="button" :disabled="importForm.processing" @click="submitImport">
+                            <Upload />
+                            Импорт
+                        </Button>
+                        <Button type="button" variant="secondary" :disabled="importForm.processing" @click="exportStudents">
+                            <Download />
+                            Экспорт (.xlsx + құпиясөз)
+                        </Button>
+                    </div>
+                </div>
+
+                <form ref="exportFormRef" class="hidden" :action="route('users.students.export')" method="post" target="_blank">
+                    <input type="hidden" name="_token" :value="page.props.csrf_token" />
+                </form>
+            </section>
+
+            <section v-if="props.importResult" class="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
+                <h2 class="text-base font-semibold text-amber-950">Соңғы импорт нәтижесі</h2>
+                <p class="mt-2 text-sm text-amber-900">
+                    Жаңа: {{ props.importResult.created }}, жаңартылды: {{ props.importResult.updated }}, өткізілді:
+                    {{ props.importResult.skipped }}.
+                </p>
+                <ul v-if="props.importResult.errors.length > 0" class="mt-3 max-h-48 list-disc space-y-1 overflow-y-auto pl-5 text-sm text-amber-950">
+                    <li v-for="(err, i) in props.importResult.errors" :key="i">{{ err }}</li>
+                </ul>
             </section>
 
             <section v-if="props.generatedCredentials" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm">

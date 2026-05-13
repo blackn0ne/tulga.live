@@ -8,10 +8,10 @@ interface Props {
 
 defineProps<Props>();
 
-const isOpen = ref(true);
+const isOpen = ref(false);
 
 onMounted(() => {
-    isOpen.value = localStorage.getItem('sidebar') !== 'false';
+    isOpen.value = localStorage.getItem('sidebar') === 'true';
 });
 
 const handleSidebarChange = (open: boolean) => {

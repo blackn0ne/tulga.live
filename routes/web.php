@@ -3,6 +3,7 @@
 use App\Http\Controllers\ClassController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LessonController;
+use App\Http\Controllers\StudentSpreadsheetController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -29,6 +30,11 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('subjects', SubjectController::class)
         ->except('show');
+
+    Route::post('users/students/import', [StudentSpreadsheetController::class, 'import'])
+        ->name('users.students.import');
+    Route::post('users/students/export', [StudentSpreadsheetController::class, 'export'])
+        ->name('users.students.export');
 
     Route::resource('users', UserController::class)
         ->except('show');
