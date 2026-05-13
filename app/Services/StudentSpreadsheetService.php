@@ -212,6 +212,55 @@ final class StudentSpreadsheetService
         ]);
     }
 
+    public function exportTeachersWithNewPasswords(): StreamedResponse
+    {
+        $teachers = User::query()
+            ->where('role', UserRole::Teacher)
+            ->orderBy('id')
+            ->get();
+
+        /** @var list<array{user: User, password: string}> $payload */
+        $payload = [];
+        foreach ($teachers as $user) {
+            $payload[] = [
+                'user' => $user,
+                'password' => $this->generateNumericPassword(),
+            ];
+        }
+
+        DB::transaction(function () use ($payload): void {
+            foreach ($payload as $item) {
+                $item['user']->password = $item['password'];
+                $item['user']->save();
+            }
+        });
+
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->fromArray(['ФИО', 'Логин', 'Пароль'], null, 'A1');
+        $r = 2;
+        foreach ($payload as $item) {
+            $sheet->fromArray([
+                $item['user']->name,
+                $item['user']->username,
+                $item['password'],
+            ], null, 'A'.$r);
+            $r++;
+        }
+
+        foreach (range('A', 'C') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        $filename = 'teachers_'.now()->format('Y-m-d_His').'.xlsx';
+
+        return response()->streamDownload(function () use ($spreadsheet): void {
+            (new Xlsx($spreadsheet))->save('php://output');
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
     /**
      * @return list<list<mixed>>
      */

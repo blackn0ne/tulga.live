@@ -5,9 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { Download, Pencil, Plus, Trash2, Upload } from 'lucide-vue-next';
-import { ref } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 
 interface ManagedUser {
     id: number;
@@ -46,8 +46,21 @@ interface PaginatedUsers {
     total: number;
 }
 
+interface UserListFilters {
+    name: string;
+    username: string;
+    role: string;
+}
+
+interface RoleOption {
+    value: string;
+    label: string;
+}
+
 const props = defineProps<{
     users: PaginatedUsers;
+    filters: UserListFilters;
+    roles: RoleOption[];
     status?: string;
     generatedCredentials?: GeneratedCredentials | null;
     importResult?: ImportResult | null;
@@ -60,6 +73,7 @@ const importForm = useForm<{ file: File | null }>({
 });
 
 const exportFormRef = ref<HTMLFormElement | null>(null);
+const exportTeachersFormRef = ref<HTMLFormElement | null>(null);
 
 const onImportFile = (event: Event) => {
     const input = event.target as HTMLInputElement;
@@ -91,6 +105,18 @@ const exportStudents = () => {
     exportFormRef.value?.submit();
 };
 
+const exportTeachers = () => {
+    const ok = window.confirm(
+        'Барлық мұғалімдерге жаңа 6 таңбалы құпиясөз беріледі; .xlsx файлда ФИО, Логин, Пароль болады. Жалғастырасыз ба?',
+    );
+
+    if (!ok) {
+        return;
+    }
+
+    exportTeachersFormRef.value?.submit();
+};
+
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Қолданушылар',
@@ -99,6 +125,52 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 const deleteForm = useForm({});
+
+const draftFilters = reactive({
+    name: props.filters.name,
+    username: props.filters.username,
+    role: props.filters.role ?? '',
+});
+
+watch(
+    () => props.filters,
+    (f) => {
+        draftFilters.name = f.name;
+        draftFilters.username = f.username;
+        draftFilters.role = f.role ?? '';
+    },
+    { deep: true },
+);
+
+const hasActiveFilters = computed(
+    () =>
+        !!(props.filters.name?.trim() || props.filters.username?.trim() || props.filters.role),
+);
+
+const applyFilters = () => {
+    const q: Record<string, string> = {};
+    if (draftFilters.name.trim()) {
+        q.name = draftFilters.name.trim();
+    }
+    if (draftFilters.username.trim()) {
+        q.username = draftFilters.username.trim();
+    }
+    if (draftFilters.role) {
+        q.role = draftFilters.role;
+    }
+    router.get(route('users.index'), q, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+    });
+};
+
+const clearFilters = () => {
+    draftFilters.name = '';
+    draftFilters.username = '';
+    draftFilters.role = '';
+    router.get(route('users.index'), {}, { preserveState: true, preserveScroll: true, replace: true });
+};
 
 const remove = (user: ManagedUser) => {
     if (user.is_current) {
@@ -112,6 +184,9 @@ const remove = (user: ManagedUser) => {
     deleteForm.delete(route('users.destroy', user.id), {
         data: {
             page: props.users.current_page,
+            name: props.filters.name?.trim() || undefined,
+            username: props.filters.username?.trim() || undefined,
+            role: props.filters.role || undefined,
         },
         preserveScroll: true,
     });
@@ -174,6 +249,23 @@ const remove = (user: ManagedUser) => {
                 <form ref="exportFormRef" class="hidden" :action="route('users.students.export')" method="post" target="_blank">
                     <input type="hidden" name="_token" :value="page.props.csrf_token" />
                 </form>
+
+                <div class="mt-8 border-t pt-6">
+                    <h3 class="text-base font-semibold tracking-tight">Мұғалімдер Excel</h3>
+                    <p class="mt-1 text-sm text-muted-foreground">
+                        Экспорт: бағандар <span class="font-semibold">ФИО</span>, <span class="font-semibold">Логин</span>,
+                        <span class="font-semibold">Пароль</span>. Әр мұғалімге жаңа 6 таңбалы құпиясөз беріледі және дерекқорда сақталады.
+                    </p>
+                    <div class="mt-3">
+                        <Button type="button" variant="secondary" :disabled="importForm.processing" @click="exportTeachers">
+                            <Download />
+                            Мұғалімдер экспорты (.xlsx)
+                        </Button>
+                    </div>
+                    <form ref="exportTeachersFormRef" class="hidden" :action="route('users.teachers.export')" method="post" target="_blank">
+                        <input type="hidden" name="_token" :value="page.props.csrf_token" />
+                    </form>
+                </div>
             </section>
 
             <section v-if="props.importResult" class="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
@@ -234,18 +326,58 @@ const remove = (user: ManagedUser) => {
                 </CardHeader>
 
                 <CardContent class="p-0">
+                    <form
+                        class="grid gap-4 border-b bg-muted/30 p-4 md:grid-cols-12 md:items-end"
+                        @submit.prevent="applyFilters"
+                    >
+                        <div class="grid gap-2 md:col-span-3">
+                            <Label for="filter-name">ФИО</Label>
+                            <Input id="filter-name" v-model="draftFilters.name" type="search" placeholder="Толық аты…" autocomplete="off" />
+                        </div>
+                        <div class="grid gap-2 md:col-span-3">
+                            <Label for="filter-username">Логин</Label>
+                            <Input id="filter-username" v-model="draftFilters.username" type="search" placeholder="Логин…" autocomplete="off" />
+                        </div>
+                        <div class="grid gap-2 md:col-span-3">
+                            <Label for="filter-role">Рөлі</Label>
+                            <select
+                                id="filter-role"
+                                v-model="draftFilters.role"
+                                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                            >
+                                <option value="">Барлығы</option>
+                                <option v-for="role in props.roles" :key="role.value" :value="role.value">
+                                    {{ role.label }}
+                                </option>
+                            </select>
+                        </div>
+                        <div class="flex flex-wrap gap-2 md:col-span-3">
+                            <Button type="submit">Іздеу</Button>
+                            <Button type="button" variant="secondary" @click="clearFilters">Тазалау</Button>
+                        </div>
+                    </form>
+
                     <div v-if="props.users.data.length === 0" class="flex flex-col items-center justify-center gap-4 px-6 py-16 text-center">
-                        <div class="space-y-1">
+                        <div v-if="hasActiveFilters" class="space-y-1">
+                            <h3 class="text-lg font-medium">Нәтиже табылмады</h3>
+                            <p class="text-sm text-muted-foreground">
+                                Фильтрлерді өзгертіп қайта іздеңіз немесе шарттарды тазалаңыз.
+                            </p>
+                        </div>
+                        <div v-else class="space-y-1">
                             <h3 class="text-lg font-medium">Қолданушылар әлі қосылмаған</h3>
                             <p class="text-sm text-muted-foreground">Бірінші қолданушыны дәл қазір қосып, жүйені толтыра бастаңыз.</p>
                         </div>
 
-                        <Button as-child>
-                            <Link :href="route('users.create')">
-                                <Plus />
-                                Қолданушы қосу
-                            </Link>
-                        </Button>
+                        <div class="flex flex-wrap items-center justify-center gap-2">
+                            <Button v-if="hasActiveFilters" type="button" variant="secondary" @click="clearFilters">Тазалау</Button>
+                            <Button v-else as-child>
+                                <Link :href="route('users.create')">
+                                    <Plus />
+                                    Қолданушы қосу
+                                </Link>
+                            </Button>
+                        </div>
                     </div>
 
                     <div v-else class="overflow-x-auto">

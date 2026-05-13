@@ -35,6 +35,8 @@ Route::middleware('auth')->group(function () {
         ->name('users.students.import');
     Route::post('users/students/export', [StudentSpreadsheetController::class, 'export'])
         ->name('users.students.export');
+    Route::post('users/teachers/export', [StudentSpreadsheetController::class, 'exportTeachers'])
+        ->name('users.teachers.export');
 
     Route::resource('users', UserController::class)
         ->except('show');

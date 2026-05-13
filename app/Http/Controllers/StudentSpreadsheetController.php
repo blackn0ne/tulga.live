@@ -37,4 +37,11 @@ class StudentSpreadsheetController extends Controller
 
         return $service->exportStudentsWithNewPasswords();
     }
+
+    public function exportTeachers(Request $request, StudentSpreadsheetService $service): StreamedResponse
+    {
+        $this->ensureAdmin($request);
+
+        return $service->exportTeachersWithNewPasswords();
+    }
 }

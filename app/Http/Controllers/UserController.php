@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\UserRole;
 use App\Models\SchoolClass;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -21,8 +22,14 @@ class UserController extends Controller
     {
         $this->ensureAdmin($request);
 
-        $users = User::query()
-            ->with('schoolClass:id,name')
+        $filters = $this->validatedListFilters($request);
+
+        $query = User::query()
+            ->with('schoolClass:id,name');
+
+        $this->applyUserListFilters($query, $filters);
+
+        $users = $query
             ->latest()
             ->paginate(25)
             ->withQueryString()
@@ -39,6 +46,12 @@ class UserController extends Controller
 
         return Inertia::render('users/Index', [
             'users' => $users,
+            'filters' => [
+                'name' => $filters['name'],
+                'username' => $filters['username'],
+                'role' => $filters['role'] ?? '',
+            ],
+            'roles' => $this->roleOptions(),
             'status' => $request->session()->get('status'),
             'generatedCredentials' => $request->session()->get('generatedCredentials'),
             'importResult' => $request->session()->get('importResult'),
@@ -160,15 +173,16 @@ class UserController extends Controller
             return back()->with('status', 'Өз аккаунтыңызды бұл бөлімнен жоюға болмайды.');
         }
 
+        $filters = $this->validatedListFilters($request);
         $currentPage = max(1, $request->integer('page', 1));
 
         $user->delete();
 
-        $lastPage = max(1, (int) ceil(User::query()->count() / 25));
+        $countQuery = User::query();
+        $this->applyUserListFilters($countQuery, $filters);
+        $lastPage = max(1, (int) ceil($countQuery->count() / 25));
 
-        return to_route('users.index', [
-            'page' => min($currentPage, $lastPage),
-        ])->with('status', 'Қолданушы жойылды.');
+        return to_route('users.index', $this->usersIndexRouteQuery($filters, min($currentPage, $lastPage)))->with('status', 'Қолданушы жойылды.');
     }
 
     /**
@@ -211,5 +225,70 @@ class UserController extends Controller
             UserRole::Teacher => 'Мұғалім',
             UserRole::Student => 'Оқушы',
         };
+    }
+
+    /**
+     * @return array{name: string, username: string, role: string|null}
+     */
+    private function validatedListFilters(Request $request): array
+    {
+        $data = $request->validate([
+            'name' => ['nullable', 'string', 'max:255'],
+            'username' => ['nullable', 'string', 'max:255'],
+            'role' => ['nullable', 'string', Rule::in(collect(UserRole::cases())->map->value->all())],
+        ]);
+
+        return [
+            'name' => trim((string) ($data['name'] ?? '')),
+            'username' => trim((string) ($data['username'] ?? '')),
+            'role' => isset($data['role']) && is_string($data['role']) && $data['role'] !== '' ? $data['role'] : null,
+        ];
+    }
+
+    /**
+     * @param  array{name: string, username: string, role: string|null}  $filters
+     */
+    private function applyUserListFilters(Builder $query, array $filters): void
+    {
+        if ($filters['name'] !== '') {
+            $like = '%'.addcslashes($filters['name'], '%_\\').'%';
+            $query->where('name', 'like', $like);
+        }
+
+        if ($filters['username'] !== '') {
+            $like = '%'.addcslashes($filters['username'], '%_\\').'%';
+            $query->where('username', 'like', $like);
+        }
+
+        if ($filters['role'] !== null) {
+            $query->where('role', $filters['role']);
+        }
+    }
+
+    /**
+     * @param  array{name: string, username: string, role: string|null}  $filters
+     * @return array<string, int|string>
+     */
+    private function usersIndexRouteQuery(array $filters, ?int $page = null): array
+    {
+        $query = [];
+
+        if ($filters['name'] !== '') {
+            $query['name'] = $filters['name'];
+        }
+
+        if ($filters['username'] !== '') {
+            $query['username'] = $filters['username'];
+        }
+
+        if ($filters['role'] !== null && $filters['role'] !== '') {
+            $query['role'] = $filters['role'];
+        }
+
+        if ($page !== null && $page > 1) {
+            $query['page'] = $page;
+        }
+
+        return $query;
     }
 }
