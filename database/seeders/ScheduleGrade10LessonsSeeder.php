@@ -40,7 +40,7 @@ class ScheduleGrade10LessonsSeeder extends Seeder
             ->pluck('id');
 
         if ($classIds->isEmpty()) {
-            $this->warn('10-* сыныптар табылмады. Алдымен сынып атауларын (мысалы 10-1) қосыңыз немесе осы seeder сыныптарды жасайды.');
+            $this->command?->warn('10-* сыныптар табылмады. Алдымен сынып атауларын (мысалы 10-1) қосыңыз немесе осы seeder сыныптарды жасайды.');
 
             for ($i = 1; $i <= 10; $i++) {
                 SchoolClass::query()->firstOrCreate(['name' => '10-'.$i]);
@@ -95,7 +95,7 @@ class ScheduleGrade10LessonsSeeder extends Seeder
             ])->save();
         }
 
-        $this->info('10 сынып: '.count($rows).' сабақ ('.self::SCHEDULE_DATE.').');
+        $this->command?->info('10 сынып: '.count($rows).' сабақ ('.self::SCHEDULE_DATE.').');
     }
 
     private function resolveTeacherUser(string $displayName): User
