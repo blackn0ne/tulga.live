@@ -15,7 +15,7 @@ Artisan::command('inspire', function () {
 
 Artisan::command('lessons:auto-finish', function (): void {
     $count = Lesson::query()
-        ->where('meeting_status', 'started')
+        ->whereIn('meeting_status', ['started', 'scheduled'])
         ->whereNotNull('end_at')
         ->where('end_at', '<=', now())
         ->update(['meeting_status' => 'finished']);
@@ -23,7 +23,7 @@ Artisan::command('lessons:auto-finish', function (): void {
     if ($count > 0) {
         $this->info("Авто-жабылды: {$count} сабақ.");
     }
-})->purpose('Аяқталу уақыты өткен «басталған» сабақтарды автоматты түрде «аяқталды» деп белгілейді.');
+})->purpose('Аяқталу уақыты өткен «жоспарланған» немесе «басталған» сабақтарды автоматты түрде «өтілді» деп белгілейді.');
 
 Schedule::command('lessons:auto-finish')->everyMinute();
 
