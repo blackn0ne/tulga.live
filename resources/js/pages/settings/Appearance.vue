@@ -22,7 +22,10 @@ const breadcrumbItems: BreadcrumbItem[] = [
 
         <SettingsLayout>
             <div class="space-y-6">
-                <HeadingSmall title="Көрініс баптаулары" description="Интерфейстің көрініс режимін таңдаңыз" />
+                <HeadingSmall
+                    title="Көрініс баптаулары"
+                    description="Көрініс әрқашан ашық (ақ) темада; жүйелік қараңғы режим ескерілмейді."
+                />
                 <AppearanceTabs />
             </div>
         </SettingsLayout>
